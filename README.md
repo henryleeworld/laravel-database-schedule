@@ -1,4 +1,4 @@
-# Laravel 8 資料庫排程
+# Laravel 10 資料庫排程
 
 引入 robersonfaria 的 laravel-database-schedule 套件來擴增資料庫排程，可以在任何指定的時間管理將要執行的排程，這些排程已紀錄在資料庫中，並且可以通過儀表板進行變更、開啟、關閉或刪除，無需進行新的應用程式佈署。
 
@@ -20,19 +20,24 @@ $ php artisan key:generate
 ```sh
 $ php artisan migrate
 ```
-- 執行安裝 Laravel Mix 引用的依賴項目，並執行所有 Mix 任務。
+- 執行安裝 Vite 和 Laravel 擴充套件引用的依賴項目。
 ```sh
-$ npm install && npm run dev
+$ npm install
+```
+- 執行正式環境版本化資源管道並編譯。
+```sh
+$ npm run build
 ```
 - 在瀏覽器中輸入已定義的路由 URL 來訪問，例如：http://127.0.0.1:8000。
 - 你可以經由 `/register` 來進行註冊。
 - 完成註冊後，可以經由 `/login` 來進行登入。
+- 登入後，可以經由 `/schedule` 來進行任務排程清單瀏覽。
 
 ----
 
 ## 畫面截圖
-![](https://i.imgur.com/tUORBLw.png)
+![](https://i.imgur.com/tTMsX32.png)
 > 一眼就可以監控全部排程任務
 
-![](https://i.imgur.com/skM3ZbX.png)
+![](https://i.imgur.com/4Vwx8pa.png)
 > 提供一個方便的方式來把任務加入排程

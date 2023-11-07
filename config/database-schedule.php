@@ -12,8 +12,20 @@ return [
         'schedule_histories' => 'schedule_histories'
     ],
     'model' => Schedule::class,
+
     'timezone' => env('SCHEDULE_TIMEZONE', config('app.timezone')),
     'middleware' => 'web',
+    'guard' => 'web',
+
+    /**
+     * If restricted_access is true, the user must be authenticated and meet the definition of `viewDatabaseSchedule` gate
+     */
+    'restricted_access' => env('SCHEDULE_RESTRICTED_ACCESS', true),
+
+    /**
+     * If you have a lot of jobs, you can group them for easier managing of jobs.
+     */
+    'enable_groups' => env('SCHEDULE_ENABLE_GROUPS', false),
 
     /**
      * Cache settings
@@ -28,8 +40,17 @@ return [
      * Route settings
      */
     'route' => [
-        'prefix' => 'schedule'
+        'prefix' => 'schedule',
+        'name'   => 'database-schedule'
     ],
+
+    'default_ordering' => 'created_at',
+    'default_ordering_direction' => 'DESC',
+
+    /**
+     * How many jobs do you want to have on each page ?
+     */
+    'per_page' => 10,
 
     /**
      * Commands settings
@@ -68,7 +89,8 @@ return [
             'make:*',
             'queue:*',
             'schedule:*',
-            'view:*'
+            'view:*',
+            'phpunit:*'
         ]
     ],
 

@@ -1,51 +1,140 @@
-<div id="app-form">
+@inject('commandService', 'RobersonFaria\DatabaseSchedule\Http\Services\CommandService')
+<div x-data='{
+    selectedCommand: "{{old('command', (isset($schedule) ? $schedule->command : ''))}}",
+    commands: @json($commandService->get()),
+    arguments: @json(old('params', (isset($schedule) ? $schedule->params : []))),
+    options: @json(old('options', (isset($schedule) ? $schedule->options : []))),
+    get commandObject() {
+        if(this.commands.hasOwnProperty(this.selectedCommand)) {
+            return this.commands[this.selectedCommand];
+        }
+        return {
+            arguments: [],
+            options: {
+                withValue: [],
+                withoutValue: []
+            }
+        }
+    }
+}'>
     <div class="form-group">
         <label>{{ trans('schedule::schedule.fields.command') }}</label>
-        @inject('commandService', 'RobersonFaria\DatabaseSchedule\Http\Services\CommandService')
-        <select name="command"
-                id="command"
-                v-model="form.command"
-                class="form-control @error('command') is-invalid @enderror"
-                @if(isset($schedule) && $schedule->command) disabled @endif>
+        <select x-model="selectedCommand"
+                name="command"
+                class="form-control @error('command') is-invalid @enderror">
             <option value="">{{ trans('schedule::schedule.messages.select') }}</option>
-            @foreach($commandService->get() as $command)
-                <option value="{{ $command->name }}">
-                    {{ $command->signature }} - {{ $command->description }}
+            <option value="custom">{{ trans('schedule::schedule.messages.custom') }}</option>
+            <template x-for="command in commands">
+                <option :key="command.name"
+                        :value="command.name"
+                        x-text="command.name + ' - ' + command.description"
+                        :selected="command.name == selectedCommand">
                 </option>
-            @endforeach
+            </template>
         </select>
         @error('command')
-        <div class="invalid-feedback">{{ $message }}</div>
+            <div class="invalid-feedback">{{ $message }}</div>
         @enderror
-        @if(isset($schedule) && $schedule->command)
-            <input type="hidden" name="command" value="{{ $schedule->command }}">
-        @endif
     </div>
 
-    <div id="parameters" class="ml-3" v-if="commands[form.command] !== undefined && commands[form.command].arguments.length > 0">
-        <div class="row">
-            <div class="col-12">
-                <label>Parameters:</label>
-                <div id="div_params" class="ml-5 row" v-for="argument in commands[form.command].arguments" :key="argument.name">
-                    <div class="col-8">
-                        <label>@{{ argument.name }}</label>
-                        <input type="text" class="form-control" :name="'params['+argument.name+'][value]'"
-                               :id="argument.name"
-                               :value="getRequest(argument.name)"
-                               :required="argument.required">
-                    </div>
-                    <div class="col-4">
-                        <label>{{ trans('schedule::schedule.fields.data-type') }}</label>
-                        <select :name="'params['+argument.name+'][type]'" :value="getRequestType(argument.name)" class="form-control">
-                            <option value="string">String</option>
-                            <option value="function">Function</option>
-                        </select>
+    <template x-if="commandObject.arguments.length || commandObject.options.withValue.length">
+        <div>
+            <code>{{ trans('schedule::schedule.messages.attention-type-function') }}</code>
+            <template x-if="commandObject.arguments.length">
+                <div class="row my-3">
+                    <div class="col-12">
+                        <label>{{ trans('schedule::schedule.fields.arguments') }}:</label>
+                        <template x-for="argument in commandObject.arguments">
+                            <div class="ml-5 row">
+                                <div class="col-8 form-group">
+                                    <label x-text="argument.name"></label>
+                                    <input type="text" class="form-control"
+                                           :name="'params['+argument.name+'][value]'"
+                                           :value="arguments && arguments.hasOwnProperty(argument.name) ? arguments[argument.name].value : argument.default"
+                                           :required="argument.required">
+                                </div>
+                                <div class="col-4 form-group">
+                                    <label>{{ trans('schedule::schedule.fields.data-type') }}</label>
+                                    <select :name="'params['+argument.name+'][type]'" class="form-control">
+                                        <option value="string">String</option>
+                                        <option value="function"
+                                                :selected="(arguments && arguments.hasOwnProperty(argument.name) ? arguments[argument.name].type : '') === 'function'">
+                                            Function
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                        </template>
                     </div>
                 </div>
+            </template>
+
+            <template x-if="commandObject.options.withValue.length">
+                <div class="row my-3" id="options">
+                    <div class="col-12">
+                        <label>{{ trans('schedule::schedule.fields.options_with_value') }}:</label>
+                        <template x-for="option in commandObject.options.withValue">
+                            <div class="ml-5 row">
+                                <div class="col-8 form-group">
+                                    <label x-text="option.name"></label>
+                                    <input type="text" class="form-control"
+                                           :name="'options['+option.name+'][value]'"
+                                           :value="options && options.hasOwnProperty(option.name) ? options[option.name].value : option.default"
+                                           :required="option.required">
+                                </div>
+                                <div class="col-4 form-group">
+                                    <label>{{ trans('schedule::schedule.fields.data-type') }}</label>
+                                    <select :name="'options['+option.name+'][type]'" class="form-control">
+                                        <option value="string">String</option>
+                                        <option value="function"
+                                                :selected="(options && options.hasOwnProperty(option.name) ? options[option.name].type : '') === 'function'">
+                                            Function
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </template>
+
+    <template x-if="commandObject.options.withoutValue.length">
+        <div class="row my-3">
+            <div class="col-12">
+                <label>{{ trans('schedule::schedule.fields.options') }}:</label>
+                <template x-for="option in commandObject.options.withoutValue">
+                    <div class="ml-5 row">
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input"
+                                       :name="'options['+option+']'"
+                                       :checked="options && options.hasOwnProperty(option)">
+                                <label x-text="option" class="form-check-label" :for="option"></label>
+                            </div>
+                        </div>
+                    </div>
+                </template>
             </div>
         </div>
-        <code>{{ trans('schedule::schedule.messages.attention-type-function') }}</code>
-    </div>
+    </template>
+
+    <template x-if="selectedCommand === 'custom'">
+        <div class="form-group row">
+            <div class="col-12">
+                <input
+                   type="text"
+                   placeholder="{{ trans('schedule::schedule.messages.custom-command-here')}}"
+                   name="command_custom"
+                   class="form-control @error('command_custom') is-invalid @enderror"/>
+                @error('command_custom')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+            </div>
+        </div>
+    </template>
+
 
     <div class="form-group">
         <label>{{ trans('schedule::schedule.fields.expression') }}</label>
@@ -56,12 +145,53 @@
         <div class="invalid-feedback">{{ $message }}</div>
         @enderror
         @if(config('database-schedule.tool-help-cron-expression.enable'))
-            <small id="expressiondHelpBlock" class="form-text text-muted">
+            <small id="expressionHelpBlock" class="form-text text-muted">
                 <a href="{{ config('database-schedule.tool-help-cron-expression.url') }}" target="_blank">
                     {{ trans("schedule::schedule.messages.help-cron-expression") }}
                 </a>
             </small>
         @endif
+    </div>
+
+    @if(config('database-schedule.enable_groups', false))
+        <div class="form-group">
+            <label>{{ trans('schedule::schedule.fields.groups') }}</label>
+            <input type="text" class="form-control @error('groups') is-invalid @enderror" name="groups"
+                   id="groups"
+                   value="{{ old('groups', $schedule->groups ?? '') }}">
+            @error('groups')
+                <div class="invalid-feedback">{{ $message }}</div>
+            @enderror
+            <small id="groupsHelpBlock" class="form-text text-muted">
+                {{ trans('schedule::schedule.messages.help-type', ['type' => strtolower(trans('schedule::schedule.fields.groups'))]) }}
+            </small>
+        </div>
+    @endif
+
+    <div class="form-group">
+        <label>{{ trans('schedule::schedule.fields.environments') }}</label>
+        <input type="text" class="form-control @error('environments') is-invalid @enderror" name="environments"
+               id="environments"
+               value="{{ old('environments', $schedule->environments ?? '') }}">
+        @error('environments')
+            <div class="invalid-feedback">{{ $message }}</div>
+        @enderror
+        <small id="environmentsHelpBlock" class="form-text text-muted">
+            {{ trans('schedule::schedule.messages.help-type', ['type' => strtolower(trans('schedule::schedule.fields.environments'))]) }}
+        </small>
+    </div>
+
+    <div class="form-group">
+        <label>{{ trans('schedule::schedule.fields.log_filename') }}</label>
+        <input type="text" class="form-control @error('log_filename') is-invalid @enderror" name="log_filename"
+               id="log_filename"
+               value="{{ old('log_filename', $schedule->log_filename ?? '') }}">
+        @error('log_filename')
+            <div class="invalid-feedback">{{ $message }}</div>
+        @enderror
+        <small id="logFilenameHelpBlock" class="form-text text-muted">
+            {{ trans('schedule::schedule.messages.help-log-filename') }}
+        </small>
     </div>
 
     <div class="form-group">
@@ -95,6 +225,19 @@
     </div>
 
     <div class="form-check">
+        <input type="checkbox" class="form-check-input @error('sendmail_success') is-invalid @enderror"
+               name="sendmail_success"
+               id="sendmail_success"
+               value="1"
+                {{ old('sendmail_success', $schedule->sendmail_success ?? '') == 1 ? 'checked' : '' }}>
+        <label class="form-check-label"
+               for="sendmail_success">{{ trans('schedule::schedule.fields.sendmail_success') }}</label>
+        @error('sendmail_success')
+        <div class="invalid-feedback">{{ $message }}</div>
+        @enderror
+    </div>
+
+    <div class="form-check">
         <input type="checkbox" class="form-check-input @error('sendmail_error') is-invalid @enderror"
                name="sendmail_error"
                id="sendmail_error"
@@ -105,6 +248,26 @@
         @error('sendmail_error')
         <div class="invalid-feedback">{{ $message }}</div>
         @enderror
+    </div>
+
+    <div class="form-check">
+        <input type="checkbox" class="form-check-input"
+               name="log_success"
+               id="log_success"
+               value="1"
+            {{ old('log_success', ($errors->any() ? 0 : ($schedule->log_success ?? !$errors->any()))) == 1 ? 'checked' : '' }}>
+        <label class="form-check-label"
+               for="log_success">{{ trans('schedule::schedule.fields.log_success') }}</label>
+    </div>
+
+    <div class="form-check">
+        <input type="checkbox" class="form-check-input"
+               name="log_error"
+               id="log_error"
+               value="1"
+            {{ old('log_error', ($errors->any() ? 0 : ($schedule->log_error ?? !$errors->any()))) == 1 ? 'checked' : '' }}>
+        <label class="form-check-label"
+               for="log_error">{{ trans('schedule::schedule.fields.log_error') }}</label>
     </div>
 
     <div class="form-check">
@@ -159,33 +322,3 @@
         @enderror
     </div>
 </div>
-
-@push('js')
-<script>
-    var app = new Vue({
-        el: '#app-form',
-        data: {
-            commands: @json($commandService->get()),
-            requests: @json($schedule->params ?? old('params') ?? []),
-            form: {
-                command: '{{ old('command', $schedule->command ?? '') }}',
-                params: []
-            }
-        },
-        methods: {
-            getRequest: function (command) {
-                if(this.requests !== null && this.requests[command] !== undefined) {
-                    return this.requests[command].value;
-                }
-                return '';
-            },
-            getRequestType: function (command) {
-                if(this.requests !== null && this.requests[command] !== undefined) {
-                    return this.requests[command].type;
-                }
-                return '';
-            }
-        }
-    })
-</script>
-@endpush

@@ -1,77 +1,120 @@
 @extends('schedule::layout.master')
 
 @section('content')
-    <div class="container">
+    <div class="container-fluid">
         @include('schedule::messages')
         <div class="card">
-            <div class="card-header">{{ trans('schedule::schedule.titles.list') }}</div>
-            <div class="card-body">
-                <table class="table table-bordered table-striped table-sm table-hover">
-                    <thead>
-                    <tr>
-                        <th class="text-center">{{ trans('schedule::schedule.fields.command') }}</th>
-                        <th class="text-center">{{ trans('schedule::schedule.fields.params') }}</th>
-                        <th class="text-center">{{ trans('schedule::schedule.fields.expression') }}</th>
-                        <th class="text-center">{{ trans('schedule::schedule.fields.status') }}</th>
-                        <th class="text-center" width="270">{{ trans('schedule::schedule.fields.actions') }}</th>
-                    </tr>
-                    @forelse($schedules as $schedule)
-                        <tr>
-                            <td>{{ $schedule->command }}</td>
-                            <td>
-                                @foreach($schedule->params as $param => $value)
-                                    {{ $param }}: {{ $value['value'] }}<br>
-                                @endforeach
-                            </td>
-                            <td>{{ $schedule->expression }}</td>
-                            <td class="{{ $schedule->status ? 'text-success' : 'text-secondary' }}">
-                                {{ $schedule->status ? trans('schedule::schedule.status.active') : trans('schedule::schedule.status.inactive') }}
-                            </td>
-                            <td class="text-center">
-                                <a href="{{ action('\RobersonFaria\DatabaseSchedule\Http\Controllers\ScheduleController@show', $schedule) }}"
-                                   class="btn btn-sm btn-info">
-                                    {{ trans('schedule::schedule.buttons.history') }}
-                                </a>
-                                @if($schedule->status)
+            <div class="card-header">{{ trans('schedule::schedule.titles.list') }}
+                <small><code>
+                        {{ trans('schedule::schedule.messages.timezone') }}{{ config('database-schedule.timezone') }}
+                    </code></small>
+                    <span style="float: right;">
+                        <a href="{{ config('app.url', '/') }}"><i class="bi bi-house-fill"></i> {{ trans('schedule::schedule.titles.back_to_application') }}</a>
+                    </span>
+            </div>
+            <div class="card-body table-responsive"
+                 x-data="{
+                 messageTemplate:'{{ trans('schedule::schedule.messages.delete_cronjob_confirm') }}',
+                 message: '',
+                 routeTemplate:'{{ route(config('database-schedule.route.name', 'database-schedule') . '.destroy', ['schedule' => '#ID#']) }}',
+                 route: ''
+            }">
+                @include('schedule::delete-modal')
+                    <form id="schedule-filter-form"  method="POST" action="{{ route(config('database-schedule.route.name', 'database-schedule') . '.filter') }}">@csrf</form>
+                    <form id="schedule-filter-reset" method="POST" action="{{ route(config('database-schedule.route.name', 'database-schedule') . '.filter-reset') }}">@csrf</form>
+
+                    <table class="table table-bordered table-striped table-sm table-hover">
+                        <thead>
+                            {{ Helpers::buildHeader() }}
+                            {{ Helpers::buildFilter() }}
+                        <tbody>
+                        @if ($schedules->isEmpty())
+                            <tr>
+                                <td colspan="100%"> {{ trans('schedule::schedule.messages.no-records-found') }} </td>
+                            </tr>
+                        @else
+                        @foreach($schedules as $schedule)
+                            <tr>
+                                <td>{{ $schedule->command }}@if ($schedule->command == 'custom')
+                                        : {{ $schedule->command_custom }} @endif</td>
+                                <td>
+                                    @if(isset($schedule->params))
+                                        @foreach($schedule->params as $param => $value)
+                                            @if(isset($value['value']))
+                                                {{ $param }}
+                                                ={{ $value['value'] }}{{ $value['type'] === 'function' ? '()' : ''}}<br>
+                                            @endif
+                                        @endforeach
+                                    @endif
+                                </td>
+                                <td>
+                                    @if(isset($schedule->options))
+                                        @foreach($schedule->options as $option => $value)
+                                            @if(!is_array($value) || isset($value['value']))
+                                                @if(is_array($value))
+                                                    --{{ $option }}
+                                                    ={{ $value['value'] }}{{ $value['type'] === 'function' ? '()' : ''}}
+                                                @else
+                                                    --{{ $option }}
+                                                @endif
+                                                <br>
+                                            @endif
+                                        @endforeach
+                                    @endif
+                                </td>
+                                <td class="text-center">{{ $schedule->expression }}</td>
+                                @if(config('database-schedule.enable_groups', false))
+                                    <td class="text-center">{{ $schedule->groups }}</td>
+                                @endif
+                                <td class="text-center">{{ $schedule->environments }}</td>
+                                <td class="text-center">{{ $schedule->created_at }}</td>
+                                <td class="text-center">{{ $schedule->created_at == $schedule->updated_at ? trans('schedule::schedule.fields.never') : $schedule->updated_at }}</td>
+                                <td class="text-center {{ $schedule->status ? 'text-success' : 'text-secondary' }}">
+                                    {{ $schedule->status ? trans('schedule::schedule.status.active') : trans('schedule::schedule.status.inactive') }}
+                                    {{ $schedule->deleted_at ? (', ' . trans('schedule::schedule.status.trashed')) : '' }}
+                                </td>
+                                <td class="text-center">
+                                    <a href="{{ action('\RobersonFaria\DatabaseSchedule\Http\Controllers\ScheduleController@show', $schedule) }}"
+                                       class="btn btn-sm btn-info">
+                                        <i title="{{ trans('schedule::schedule.buttons.history') }}"
+                                           class="bi bi-journal"> </i>
+                                    </a>
                                     <a href="{{ action('\RobersonFaria\DatabaseSchedule\Http\Controllers\ScheduleController@edit', $schedule) }}"
                                        class="btn btn-sm btn-primary">
-                                        {{ trans('schedule::schedule.buttons.edit') }}
+                                        <i title="{{ trans('schedule::schedule.buttons.edit') }}"
+                                           class="bi bi-pencil-square"></i>
                                     </a>
-                                    <form action="{{ action('\RobersonFaria\DatabaseSchedule\Http\Controllers\ScheduleController@status', [$schedule, 'status' => 0]) }}" method="POST" class="d-inline">
+                                    <form action="{{ route(config('database-schedule.route.name', 'database-schedule') . '.status', ['schedule' => $schedule->id, 'status' => $schedule->status ? 0 : 1]) }}"
+                                          method="POST" class="d-inline">
                                         @csrf
-                                        <button type="submit" class="btn btn-secondary btn-sm">
-                                            {{ trans('schedule::schedule.buttons.inactivate') }}
+                                        <button type="submit"
+                                                class="btn btn-{{ $schedule->status ? 'secondary' : 'success' }} btn-sm">
+                                            <i title="{{ trans('schedule::schedule.buttons.' . ($schedule->status ? 'inactivate' : 'activate')) }}"
+                                               class="bi {{ ($schedule->status ? 'bi-pause' : 'bi-play') }}"></i>
                                         </button>
                                     </form>
-                                @else
-                                    <form action="{{ action('\RobersonFaria\DatabaseSchedule\Http\Controllers\ScheduleController@status', [$schedule, 'status' => 1]) }}" method="POST" class="d-inline">
-                                        @csrf
-                                        <button type="submit" class="btn btn-success btn-sm">
-                                            {{ trans('schedule::schedule.buttons.activate') }}
+                                    @if ($schedule->deleted_at)
+                                        <form action="{{ route(config('database-schedule.route.name', 'database-schedule') . '.restore', ['thrashed_schedule' => $schedule->id]) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <button type="submit" class="btn btn-success btn-sm">
+                                                <i title="{{ trans('schedule::schedule.buttons.restore') }}" class="bi bi-recycle"></i>
+                                            </button>
+                                        </form>
+                                    @else
+                                        <button
+                                                x-on:click="message=messageTemplate.replace(':cronjob', '{{ $schedule->command }}'); route=routeTemplate.replace('#ID#', {{ $schedule->id }})"
+                                                type="button" class="btn btn-danger btn-sm"
+                                                data-toggle="modal"
+                                                data-target="#delete-modal">
+                                            <i title="{{ trans('schedule::schedule.buttons.delete') }}" class="bi bi-trash"></i>
                                         </button>
-                                    </form>
-                                @endif
-                                <form action="{{ action('\RobersonFaria\DatabaseSchedule\Http\Controllers\ScheduleController@destroy', $schedule) }}" method="POST" class="d-inline">
-                                    @method('DELETE')
-                                    @csrf
-                                    <button type="submit" class="btn btn-danger btn-sm">
-                                        {{ trans('schedule::schedule.buttons.delete') }}
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="text-center">
-                                {{ trans('schedule::schedule.messages.no-records-found') }}
-                            </td>
-                        </tr>
-                    @endforelse
-                    </thead>
-                </table>
-                <code>
-                    {{ trans('schedule::schedule.messages.timezone') }}{{ config('database-schedule.timezone') }}
-                </code>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table>
+                @endif
                 <div class='d-flex'>
                     <div class='mx-auto'>
                         {{ $schedules->links() }}
