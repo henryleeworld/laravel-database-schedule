@@ -1,4 +1,4 @@
-# Laravel 10 資料庫排程
+# Laravel 11 資料庫排程
 
 引入 robersonfaria 的 laravel-database-schedule 套件來擴增資料庫排程，可以在任何指定的時間管理將要執行的排程，這些排程已紀錄在資料庫中，並且可以通過儀表板進行變更、開啟、關閉或刪除，無需進行新的應用程式佈署。
 
@@ -36,8 +36,8 @@ $ npm run build
 ----
 
 ## 畫面截圖
-![](https://i.imgur.com/tTMsX32.png)
+![](https://i.imgur.com/Ci6ovFU.png)
 > 一眼就可以監控全部排程任務
 
-![](https://i.imgur.com/4Vwx8pa.png)
+![](https://i.imgur.com/JBKvWxu.png)
 > 提供一個方便的方式來把任務加入排程
